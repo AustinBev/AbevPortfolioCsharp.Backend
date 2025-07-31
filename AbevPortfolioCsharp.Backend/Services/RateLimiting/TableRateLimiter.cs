@@ -1,6 +1,10 @@
-﻿using Azure;
+﻿using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Azure;
 using Azure.Data.Tables;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace AbevPortfolioCsharp.Backend.Services.RateLimiting
@@ -19,28 +23,56 @@ namespace AbevPortfolioCsharp.Backend.Services.RateLimiting
             _perDay = int.TryParse(cfg["RATE_LIMIT_PER_DAY"], out var d) ? d : 10;
         }
 
-        public async Task<bool> IsAllowedAsync(string ip, CancellationToken ct = default)
+        /// <summary>
+        /// Interface implementation – extract IP and delegate to your existing logic.
+        /// </summary>
+        public Task<bool> AllowAsync(HttpRequestData req)
         {
-            var now = DateTimeOffset.UtcNow;
-            var hourKey = $"{ip}|{now::yyyyMMddHH}";
-            var dayKey = $"{ip}|{now:yyyyMMdd}";
-
-            var hourOk = await IncrementAsync("hour", hourKey, now.AddHours(2), ct) <= _perHour;
-            var dayOk = await IncrementAsync("day", dayKey, now.AddDays(2), ct) <= _perDay;
-
-            return hourOk && dayOk;
+            var ip = GetClientIp(req);
+            return IsAllowedAsync(ip);
         }
 
-        private async Task<int> IncrementAsync(string partition, string row, DateTimeOffset expires, CancellationToken ct)
+        /// <summary>
+        /// Your original per‐hour / per‐day counter logic (fixed format strings).
+        /// </summary>
+        private async Task<bool> IsAllowedAsync(string ip, CancellationToken ct = default)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var hourKey = $"{ip}|{now:yyyyMMddHH}";
+            var dayKey = $"{ip}|{now:yyyyMMdd}";
+
+            var hourCount = await IncrementAsync("hour", hourKey, now.AddHours(1), ct);
+            var dayCount = await IncrementAsync("day", dayKey, now.AddDays(1), ct);
+
+            return hourCount <= _perHour && dayCount <= _perDay;
+        }
+
+        private static string GetClientIp(HttpRequestData req)
+        {
+            if (req.Headers.TryGetValues("X-Forwarded-For", out var vals))
+                return vals.First().Split(',')[0].Trim();
+            return req.Url.Host;
+        }
+
+        private async Task<int> IncrementAsync(
+            string partition,
+            string row,
+            DateTimeOffset expires,
+            CancellationToken ct)
         {
             var entity = new TableEntity(partition, row);
             try
             {
-                var existing = await _table.GetEntityAsync<TableEntity>(partition, row, cancellationToken: ct);
-                var count = Convert.ToInt32(existing.Value.GetInt32("Count") ?? 0) + 1;
+                var existing = await _table.GetEntityAsync<TableEntity>(
+                    partition, row, cancellationToken: ct);
+                var count = (existing.Value.GetInt32("Count") ?? 0) + 1;
                 existing.Value["Count"] = count;
                 existing.Value["ExpiresAt"] = expires;
-                await _table.UpdateEntityAsync(existing.Value, existing.Value.ETag, TableUpdateMode.Replace, ct);
+                await _table.UpdateEntityAsync(
+                    existing.Value,
+                    existing.Value.ETag,
+                    TableUpdateMode.Replace,
+                    ct);
                 return count;
             }
             catch (RequestFailedException ex) when (ex.Status == 404)

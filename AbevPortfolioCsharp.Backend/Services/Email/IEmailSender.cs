@@ -1,5 +1,16 @@
-﻿namespace AbevPortfolioCsharp.Backend.Services.Email;
-public interface IEmailSender
+﻿using System.Threading;
+using System.Threading.Tasks;
+using AbevPortfolioCsharp.Backend.Models;
+
+namespace AbevPortfolioCsharp.Backend.Services.Email
 {
-    Task<bool> SendAsync(string to, string from, string replyTo, string subject, string html, CancellationToken ct = default);
+    /// <summary>
+    /// Send an email for the given contact request.
+    /// </summary>
+    public interface IEmailSender
+    {
+        /// <param name="req">The user’s contact form data.</param>
+        /// <param name="ct">The cancellation token.</param>
+        Task<bool> SendAsync(MinimalContactRequest req, CancellationToken ct = default);
+    }
 }
