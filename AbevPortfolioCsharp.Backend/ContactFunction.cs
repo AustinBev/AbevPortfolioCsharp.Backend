@@ -19,15 +19,13 @@ public class ContactFunction
 {
     private readonly ILogger<ContactFunction> _log;
 
-    public ContactFunction(ILogger<ContactFunction> log) => _log = log;
+    public ContactFunction(ILogger<ContactFunction> log)
+        => _log = log;
 
-    // ▶ 1. Worker attribute — shows as “contact” in the portal
-    [Function("contact")]
+    [Function("contact")]  // ← this name appears in the portal
     public async Task<HttpResponseData> Run(
-        // ▶ 2. Route == "contact"  →  /api/contact
-        [HttpTrigger(AuthorizationLevel.Function,
-                     "post",
-                     Route = "contact")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "contact")]
+        HttpRequestData req)
     {
         _log.LogInformation("Contact endpoint hit");
 
@@ -35,8 +33,7 @@ public class ContactFunction
         if (dto is null)
             return req.CreateResponse(HttpStatusCode.BadRequest);
 
-        // ---- TODO: verify Turnstile token & send email here ----
-        // (keep your SendGrid / Resend code)
+        // …your email-sending code here…
 
         var res = req.CreateResponse(HttpStatusCode.OK);
         await res.WriteAsJsonAsync(new { ok = true });
