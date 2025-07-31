@@ -2,10 +2,10 @@ name: Deploy Function App
 
 on:
   push:
-    branches: [ master ]
-    paths:
-      - 'AbevPortfolioCsharp.Backend/**'
-      - '.github/workflows/**'
+    branches: [ master ]    # trigger on every push to master
+    #paths:
+    #  - 'AbevPortfolioCsharp.Backend/**'
+    #  - '.github/workflows/**'
 
 permissions:
   id-token: write
@@ -33,7 +33,7 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v4
+        uses: azure/functions-action@v4
         with:
           app-name: ${{ env.APP_NAME }}
           package: ${{ env.PROJECT_DIR }}/${{ env.OUTPUT_DIR }}
