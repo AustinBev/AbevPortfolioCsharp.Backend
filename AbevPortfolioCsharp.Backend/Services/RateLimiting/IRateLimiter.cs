@@ -8,6 +8,6 @@ namespace AbevPortfolioCsharp.Backend.Services.RateLimiting
     /// </summary>
     public interface IRateLimiter
     {
-        Task<bool> AllowAsync(HttpRequestData req);
+        Task<bool> AllowAsync(string ip, CancellationToken ct = default);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
@@ -45,7 +46,7 @@ namespace AbevPortfolioCsharp.Backend.Functions
                 return req.CreateResponse(HttpStatusCode.BadRequest);
 
             // 2) Honeypot & rate-limit
-            if (!string.IsNullOrEmpty(dto.Hp) || !await _limiter.AllowAsync(req))
+            if (!string.IsNullOrEmpty(dto.Hp) || !await _limiter.AllowAsync(GetClientIp(req), ct))
                 return req.CreateResponse(HttpStatusCode.OK);
 
             // 3) Captcha: pass token + client-IP + cancellation
