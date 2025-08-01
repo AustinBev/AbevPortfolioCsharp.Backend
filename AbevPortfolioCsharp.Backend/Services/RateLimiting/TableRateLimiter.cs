@@ -24,23 +24,27 @@ namespace AbevPortfolioCsharp.Backend.Services.RateLimiting
         }
 
         /// <summary>
-        /// Interface implementation – extract IP and delegate to your existing logic.
+        /// This is your interface implementation that was missing.
+        /// It simply forwards to your existing IP‐based logic.
         /// </summary>
-        public Task<bool> AllowAsync(HttpRequestData req)
-        {
-            var ip = GetClientIp(req);
-            return IsAllowedAsync(ip);
-        }
+        public Task<bool> AllowAsync(string ip, CancellationToken ct = default)
+            => IsAllowedAsync(ip, ct);
 
         /// <summary>
-        /// Your original per‐hour / per‐day counter logic (fixed format strings).
+        /// (Optional) keep this if you still call directly from HttpRequestData.
         /// </summary>
+        public Task<bool> AllowAsync(HttpRequestData req, CancellationToken ct = default)
+        {
+            var ip = GetClientIp(req);
+            return AllowAsync(ip, ct);
+        }
+
+        // Your original rate‐counting logic, unchanged:
         private async Task<bool> IsAllowedAsync(string ip, CancellationToken ct = default)
         {
             var now = DateTimeOffset.UtcNow;
             var hourKey = $"{ip}|{now:yyyyMMddHH}";
             var dayKey = $"{ip}|{now:yyyyMMdd}";
-
             var hourCount = await IncrementAsync("hour", hourKey, now.AddHours(1), ct);
             var dayCount = await IncrementAsync("day", dayKey, now.AddDays(1), ct);
 
